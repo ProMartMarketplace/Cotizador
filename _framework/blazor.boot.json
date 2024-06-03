@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "Form.UI",
   "resources": {
-    "hash": "sha256-JXXF7QhhtpD2RVsrhs1EIYhmUrzPR7rXie/piCveQXU=",
+    "hash": "sha256-Ln4GjbrammeTJy9jkTt3J2igviruMa+2YsFhSEz8XW0=",
     "jsModuleNative": {
       "dotnet.native.8.0.6.ythkwl77hz.js": "sha256-PQhA+tZdfQKBzc23qCQEvQ0UtmY2vKBfie9FXjZn3HI="
     },
@@ -15,7 +15,7 @@
       "BlazorAnimate.wasm": "sha256-rwFvQE7EmQQRmAK0NmiigoQvxYT6a6KaBWPYzSV4+Jk=",
       "CodeBeam.MudBlazor.Extensions.wasm": "sha256-MBg/zGDHnIETug3FoDbQFiQNswsTQPnAXtAAwAHYKh4=",
       "CsvHelper.wasm": "sha256-lDU7rlMVd75pEG6FvGjcsp5ZYOs97VGGfZgKttNSKRg=",
-      "Form.UI.wasm": "sha256-bVN68hkPvasxoOzGdvLS6R3DYYNg6vjBC57y2KqKgR4=",
+      "Form.UI.wasm": "sha256-7HZy2Jtg+2ECJLulEmjsNSvLH+/SaIQfN4EZ+wDxTh8=",
       "Microsoft.AspNetCore.Components.Forms.wasm": "sha256-TfxOrSDqHP3Jk8d4hfUqat9s7HfinXt3D39AZ/K13JY=",
       "Microsoft.AspNetCore.Components.wasm": "sha256-AbXygiWkbiGv3AQzfYEq06Qo5OYDLxRb6GJhHchRopo=",
       "Microsoft.AspNetCore.Components.Web.wasm": "sha256-+swspXwVgxqJ3SdQF4lrqPwrRT7FcLPhhtP84Z4o3/M=",
