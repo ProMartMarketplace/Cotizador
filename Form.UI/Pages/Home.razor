@@ -1,0 +1,860 @@
+﻿@page "/"
+@using System.Net.Http.Headers
+@using System.Text.Json
+@inject ISnackbar Snackbar
+@inject HttpClient httpClient
+
+<style>
+    .multiline-text {
+        white-space: pre-wrap; /* CSS property to handle multiline text */
+    }
+    .datos-empresa-paper {
+    background-color: rgb(232, 232, 232);
+    padding: 16px;
+}
+</style>
+
+<PageTitle>ProMart</PageTitle>
+@if(send_status=="form"){
+<MudGrid>
+    <MudItem xs="12" sm="7">
+        <MudPaper Class="pa-4">
+            <MudForm>
+                <MudTextField @bind-Value="linea_presupuesto_actual.NombreProducto" T="string" Label="Nombre del producto" Required="true" RequiredError="Ingrese nombre de producto" />
+                    <MudSelect @bind-Value="categoria_seleccionada" SelectedValuesChanged="UpdatedSelectedCategoria" T="CategoriaSeleccionable" Label="Categoria" Variant="Variant.Filled" AnchorOrigin="Origin.BottomCenter">
+                        @foreach(Categoria categoria in CategoriaData.GetCategorias()){
+             <MudSelectItem Value="@(new CategoriaSeleccionable(categoria))" />
+             }
+</MudSelect>
+@if(categoria_seleccionada is null){
+<MudSelect T="CategoriaSeleccionable" Label="Seleccione una categoria" Disabled="true" Variant="Variant.Filled" AnchorOrigin="Origin.BottomCenter">
+                        
+</MudSelect>}else{
+    <MudSelect @bind-Value="subcategoria_seleccionada" SelectedValuesChanged="UpdatedSelectedSubcategoria" T="SubcategoriaSeleccionable" Label="Subcategoria" Variant="Variant.Filled" AnchorOrigin="Origin.BottomCenter">
+                        @foreach(Subcategoria subcategoria in CategoriaData.GetSubcategorias(categoria_seleccionada.ID)){
+             <MudSelectItem Value="@(new SubcategoriaSeleccionable(subcategoria))" />
+             }
+</MudSelect>
+}
+@if(subcategoria_seleccionada is not null){
+
+@foreach(SelectorPersonalizadoSubcategoria sps in selectores_personalizados_subcategoria){
+    <MudGrid>
+    <MudItem xs="8">
+<MudSelect @bind-Value="sps.ElementoSeleccionado" SelectedValuesChanged="UpdatedSelectedSelectorPersonalizado" T="ElementoSelectorPersonalizado" Label=@sps.Descripcion Variant="Variant.Filled" AnchorOrigin="Origin.BottomCenter">
+                        @foreach(ElementoSelectorPersonalizado e in CategoriaData.getElementosSelectorPersonalizado(sps.ID)){
+             <MudSelectItem Value=@e />
+             }
+</MudSelect>
+    </MudItem >
+    @if(sps.Detalle is not null){
+    <MudItem xs="4" Class="d-flex align-content-center flex-wrap flex-grow-1 gap-4">
+      <MudTooltip Text="@sps.Detalle">
+        <MudFab Class="d-flex align-center justify-center " Color="Color.Info" StartIcon="@Icons.Material.Outlined.Info"  Size="Size.Small" />
+        </MudTooltip>
+    </MudItem>
+    }
+    </MudGrid>
+}
+}
+                <MudGrid>
+                            <MudItem xs="6" >
+                    <MudTextField @bind-Value="linea_presupuesto_actual.Marca" T="string" Label="Marca" HelperText="Opcional" />
+                            </MudItem>
+                             <MudItem xs="6" >
+                                  <MudTextField T="string" @bind-Value="linea_presupuesto_actual.CodigoProducto"
+                                  Label="Nombre/Código (Opcional):"
+                                  />
+                                  </MudItem>
+                                  </MudGrid>
+                                  
+                                    @if(subcategoria_seleccionada is not null){
+                                        <MudGrid>
+                                        @if(subcategoria_seleccionada.SoportaLineaColor){
+                                   <MudItem xs="6" >
+                                  <MudTextField T="string" @bind-Value="campo_nueva_linea_color" 
+                                  Label="Color"
+                                  />
+                                   </MudItem>
+                                  }
+                                  @if(subcategoria_seleccionada.SoportaLineaTalle){
+                                    <MudItem xs="6" >
+                                  <MudTextField T="string"
+                                  Label="Talla" @bind-Value="campo_nueva_linea_talle"
+                                  />
+                                    </MudItem>
+                                  }
+                                  <MudItem xs="6" >
+                                  <MudNumericField @bind-Value="campo_nueva_linea_cantidad" Label="Cantidad" Min="0.0" Variant="Variant.Outlined" />
+                                  </MudItem>
+                                  </MudGrid>
+                                  <br />
+                                  @if(subcategoria_seleccionada.SoportaLineaTalle && subcategoria_seleccionada.SoportaLineaColor==false){
+                                  <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddLineaColorTalle" DisableElevation="true" >Agregar talla</MudButton>
+                                  }
+                                    @if(subcategoria_seleccionada.SoportaLineaColor && subcategoria_seleccionada.SoportaLineaTalle==false){
+                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddLineaColorTalle" DisableElevation="true" >Agregar color</MudButton>
+                                  }
+                                  @if(subcategoria_seleccionada.SoportaLineaColor && subcategoria_seleccionada.SoportaLineaTalle){
+                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddLineaColorTalle" DisableElevation="true" >Agregar color/talla</MudButton>
+                                  }
+                                  <br />
+                    }
+                    
+                    
+            </MudForm>   
+            @if(subcategoria_seleccionada is not null){
+                @if(subcategoria_seleccionada.SoportaLineaTalle||subcategoria_seleccionada.SoportaLineaColor){
+                <br />
+            <MudDataGrid T="LineaTalleYColor" Items="@talles_y_colores">
+    <Columns>
+        @if(subcategoria_seleccionada.SoportaLineaTalle){
+        <PropertyColumn Property="x => x.Talle" Title="Talla" />
+            }
+            @if(subcategoria_seleccionada.SoportaLineaColor){
+        <PropertyColumn Property="x => x.Color" Title="Color"/>
+            }
+        <PropertyColumn Property="x => x.Cantidad" Title="Cantidad"/>
+        <TemplateColumn CellClass="d-flex justify-end">
+        <CellTemplate>
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" OnClick="@(e => DeleteLineaTalleColor(context.Item))" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" />
+        </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+</MudDataGrid>
+}
+}
+        </MudPaper>
+        <MudPaper Class="pa-4 mt-4">
+            <MudGrid>
+                <MudItem xs="8">
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" DisableElevation="true" OnClick="OpenDialogAddFiles"  Class="mx-2">Agregar Notas/Documento</MudButton>
+               
+            @if(subcategoria_seleccionada is not null && (string.IsNullOrEmpty(linea_presupuesto_actual.NombreProducto)==false && string.IsNullOrWhiteSpace(linea_presupuesto_actual.NombreProducto)==false)){
+                @if(((subcategoria_seleccionada.SoportaLineaColor || subcategoria_seleccionada.SoportaLineaTalle) && talles_y_colores.Count>0)||(subcategoria_seleccionada.SoportaLineaTalle == false && subcategoria_seleccionada.SoportaLineaColor == false && campo_nueva_linea_cantidad>0)){
+                   <MudButton Variant="Variant.Filled" OnClick="AgregarLineaPresupuesto" Color="Color.Primary">Agregar Producto</MudButton>
+                }else{
+                    <MudButton Variant="Variant.Filled" Disabled="true">Agregar Producto</MudButton>
+                }
+            }else{
+                <MudButton Variant="Variant.Filled" Disabled="true">Agregar Producto </MudButton>
+            }
+                </MudItem>
+            <MudItem xs="4">
+            <MudText>@estado_archivos_y_notas_linea_actual</MudText>
+            </MudItem>
+            </MudGrid>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="5">
+        <MudPaper Class="pa-4 mud-height-full datos-empresa-paper">
+            <MudText Align="Align.Center" Class="mb-n4">Datos de la empresa</MudText>
+            <MudTextField T="string" @bind-Value="presupuesto.NombreEmpresa" Label="Nombre de la empresa" Required="true" RequiredError="Campo requerido" />
+            <MudGrid>
+                <MudItem xs="6" >
+            <MudTextField  T="string" Label="Nombre de contacto" @bind-Value="presupuesto.NombreContacto" Required="true" RequiredError="Campo requerido" />
+            </MudItem>
+            <MudItem xs="6">
+            <MudTextField T="string" Label="Apellido" @bind-Value="presupuesto.ApellidoContacto" Required="true" RequiredError="Campo requerido" />
+            </MudItem>
+            </MudGrid>
+            <MudGrid>
+                 <MudItem xs="6" >
+            <MudTextField T="string" Label="Telefono" @bind-Value="presupuesto.Telefono" Required="true" RequiredError="Campo requerido" />
+</MudItem>
+             <MudItem xs="6" >
+            <MudTextField T="string" Label="Correo electronico" @bind-Value="presupuesto.Email" Required="true" RequiredError="Campo requerido" />
+            </MudItem>
+            </MudGrid>
+            <MudTextField T="string" Label="Direccion de entrega" @bind-Value="presupuesto.DireccionEntrega" Required="true" RequiredError="Campo requerido" />
+            <MudTextField T="string" Label="Direccion de entrega(linea 2)" @bind-Value="presupuesto.DireccionEntregaLinea2" Required="true" RequiredError="Campo requerido" />
+            <MudTextField T="string" Label="Estado" @bind-Value="presupuesto.Estado" Required="true" RequiredError="Campo requerido" />
+            <MudGrid>
+                <MudItem xs="6" >
+            <MudTextField T="string" Label="Ciudad" @bind-Value="presupuesto.Ciudad" Required="true" RequiredError="Campo requerido" />
+</MudItem>
+            <MudItem xs="6" >
+            <MudTextField T="string" Label="Codigo postal" @bind-Value="presupuesto.CodigoPostal" Required="true" RequiredError="Campo requerido" />
+            </MudItem>
+            </MudGrid>
+            <MudTextField T="string" Label="Notas de entrega" Required="true" @bind-Value="presupuesto.NotasEntrega" RequiredError="Campo requerido" />
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+<MudGrid>
+     <MudItem xs="12" sm="12">
+        
+            @if(presupuesto.LineasPresupuesto.Count>0){
+            <MudSimpleTable Style="overflow-x: auto; width: 100%;">
+    <thead>
+        <tr>
+            <th>Nobre producto</th>
+            <th>Subcategoria</th>
+            <th>Marca</th>
+            <th>Codigo</th>
+            <th>Cantidad</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (LineaPresupuesto lp in presupuesto.LineasPresupuesto)
+        {
+            <tr>
+                <td>@lp.NombreProducto</td>
+                <td>@lp.Subcategoria.Nombre</td>
+                <td>@lp.Marca</td>
+                <td>@lp.CodigoProducto</td>
+                <td class="multiline-text">@lp.getTableShowableCantidades()</td>
+                <td><MudIconButton Icon="@Icons.Material.Filled.Delete" @onclick="(() => DeleteLineaPresupuesto(lp))" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" /></td>
+            </tr>
+        }
+    </tbody>
+</MudSimpleTable>
+
+}
+        
+        <br />
+        <MudPaper>
+            
+       <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="OpenDialogConfirmar" FullWidth="true">Cotizar productos</MudButton>
+        
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+}
+@if(send_status=="sending"){
+            <Animate Animation="Animations.SlideUp" Duration="TimeSpan.FromSeconds(0.5)" >
+            <div class="container">
+                <div class="table-wrapper">
+                    <div class="modal-dialog modal-confirm" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header" style="background: #3ea6a3">
+                                <div class="icon-box-inv" style="display">
+                                    <BlazorAnimate.Animate Animation="Animations.FadeIn" Duration="TimeSpan.FromSeconds(0.8)" Delay="TimeSpan.FromSeconds(2)">
+                                        <MudProgressCircular Style="@($"color:{Colors.Blue.Lighten5};")" Size="Size.Large" Indeterminate="true"></MudProgressCircular>
+                                    </BlazorAnimate.Animate>
+                                </div>
+                            </div>
+                            <div class="modal-body text-center">
+                                
+                                    <h4></h4>
+
+                                    <p>Enviando solicitud de cotización...</p>
+                                
+                                <br />
+                                <div>
+                                    
+                                </div>
+                                <br />
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            </Animate>
+}
+@if(send_status=="success"){
+            <BlazorAnimate.Animate Animation="Animations.FadeIn" Duration="TimeSpan.FromSeconds(0.5)" Delay="TimeSpan.FromSeconds(0.1)">
+            <div class="container">
+                <div class="table-wrapper">
+                    <div class="modal-dialog modal-confirm" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <div class="icon-box">
+                                    <BlazorAnimate.Animate Animation="Animations.FadeIn" Duration="TimeSpan.FromSeconds(0.8)" Delay="TimeSpan.FromSeconds(2)">
+                                        <i class="material-icons">&#xE876;</i>
+                                    </BlazorAnimate.Animate>
+                                </div>
+                            </div>
+                            <div class="modal-body text-center">
+                                <BlazorAnimate.Animate Animation="Animations.FadeIn" Duration="TimeSpan.FromSeconds(2)" Delay="TimeSpan.FromSeconds(3)">
+                                    
+
+                                    <p>¡Gracias por enviar tu solicitud de cotización!</p>
+                                    <p>Estamos procesando tu solicitud y en breve recibirás las cotizaciones correspondientes. Te notificaremos por correo electronico una vez que esten disponibles en tu cuenta. ¡Estamos aqui para ayudarte en cada paso del proceso de adquisición de equipo de seguridad!</p>
+                                </BlazorAnimate.Animate>
+                                <br />
+                                <div>
+                                    @if (render_button_volver_a_promart)
+                                    {
+                                        <BlazorAnimate.Animate Animation="Animations.FadeIn" Duration="TimeSpan.FromSeconds(1)" Delay="TimeSpan.FromSeconds(0.1)">
+                                            <MudButton Variant="Variant.Filled"  Href="https://www.promartmarketplace.com/web/login"  Color="Color.Info">Volver a mi cuenta</MudButton>
+                                            <MudButton Variant="Variant.Filled"  Href="https://promartmarketplace.github.io/Cotizador"  Color="Color.Success">Crear nueva solicitud</MudButton>
+                                        </BlazorAnimate.Animate>
+                                    }
+                                </div>
+                                <br />
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </BlazorAnimate.Animate>
+}
+@if(send_status=="error"){
+            <BlazorAnimate.Animate Animation="Animations.FadeIn" Duration="TimeSpan.FromSeconds(0.5)" Delay="TimeSpan.FromSeconds(0.1)">
+            <div class="container">
+                <div class="table-wrapper">
+                    <div class="modal-dialog modal-confirm" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header" style="background: #bd5500">
+                                <div class="icon-box">
+                                    <BlazorAnimate.Animate Animation="Animations.FadeIn" Duration="TimeSpan.FromSeconds(0.8)" Delay="TimeSpan.FromSeconds(2)">
+                                        <i class="material-icons">&#xE645;</i>
+                                    </BlazorAnimate.Animate>
+                                </div>
+                            </div>
+                            <div class="modal-body text-center">
+                                <BlazorAnimate.Animate Animation="Animations.FadeIn" Duration="TimeSpan.FromSeconds(2)" Delay="TimeSpan.FromSeconds(3)">
+                                    
+
+                                    <p>Ocurrio un error</p>
+                                </BlazorAnimate.Animate>
+                                <br />
+                                <div>
+                                    @if (render_button_volver_a_promart)
+                                    {
+                                        <BlazorAnimate.Animate Animation="Animations.FadeIn" Duration="TimeSpan.FromSeconds(1)" Delay="TimeSpan.FromSeconds(0.1)">
+                                            <MudButton Variant="Variant.Filled"  Color="Color.Secondary">Volver al formulario</MudButton>
+                                        </BlazorAnimate.Animate>
+                                    }
+                                </div>
+                                <br />
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </BlazorAnimate.Animate>
+}
+<MudDialog @bind-IsVisible="visible_dialog_agregar_archivos">
+            <TitleContent>
+                <MudText Typo="Typo.h6">
+                    <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-3" /> Agregar notas/documentos
+                </MudText>
+            </TitleContent>
+            <DialogContent>
+                <MudText>Archivos</MudText>
+                <br />
+               <MudStack Spacing="1">
+
+                            @foreach (Archivo archivo in ArchivosLinea)
+                            {
+                                var tempuuid = archivo.UUID;
+                                <MudPaper Class="pa-3">
+                                       
+                                            <MudText>@TextLenghtEqualizer(archivo.Nombre, 28)</MudText>
+                                            
+                                        
+                                       
+                                            <MudButton Variant="Variant.Text" @onclick="() => QuitarArchivoLineaActual(archivo)" Color="Color.Error">Eliminar</MudButton>
+                                        
+                                </MudPaper>
+                            }
+                </MudStack>
+                <br />
+                <MudFileUpload T="IBrowserFile" FilesChanged="AddArchivoLinea">
+                                <ButtonTemplate>
+                                    <MudButton HtmlTag="label"
+                                               Variant="Variant.Filled"
+                                               Color="Color.Primary"
+                                               StartIcon="@Icons.Filled.CloudUpload"
+                                               for="@context">
+                                        Agregar archivo
+                                    </MudButton>
+                                </ButtonTemplate>
+                            </MudFileUpload>
+                <br />
+                
+                <MudProgressLinear Color="Color.Tertiary" Size="Size.Medium" Value="percentage_total_bytes_used" />
+                @if(percentage_total_bytes_used<101){
+
+                <p>Maximo 15mb en total, utilizado: @percentage_total_bytes_used.ToString() %</p>
+
+                }else{
+
+                     <p>Maximo 15mb en total, utilizado: >100%</p>
+
+                }
+                <br />
+                @if(percentage_total_bytes_used>100){
+                    <MudAlert Severity="Severity.Warning">Se excedio el tamaño maximo de archivos. Intente eliminar algunos</MudAlert>
+                    <br />
+                }
+                <MudText>Notas/Especificaciones</MudText>
+                <br />
+                <MudTextField T="string"  Variant="Variant.Filled" @bind-Value="@linea_presupuesto_actual.NotaEspecificacion" Lines="5" />
+    
+    </DialogContent>
+            <DialogActions>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"  OnClick="CloseDialogAddFiles" Class="px-10">Guardar</MudButton>
+            </DialogActions>
+    </MudDialog>
+    <MudDialog @bind-IsVisible="visible_dialog_confirmar_envio">
+        <TitleContent>
+            <MudText Typo="Typo.h6">
+                <MudIcon Icon="@Icons.Material.Filled.ContentPaste" Class="mr-3 mb-n1" />
+                Productos a cotizar
+            </MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudSimpleTable Style="overflow-x: auto; width: 100%;">
+    <thead>
+        <tr>
+            <th>Nobre producto</th>
+            <th>Categoria</th>
+            <th>Subcategoria</th>
+            <th>Cantidad</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (LineaPresupuesto lp in presupuesto.LineasPresupuesto)
+        {
+            <tr>
+                <td>@lp.NombreProducto</td>
+                <td>@lp.Categoria.Descripcion</td>
+                <td>@lp.Subcategoria.Nombre</td>
+                <td class="multiline-text">@lp.getTableShowableCantidades()</td>
+                <td><MudIconButton Icon="@Icons.Material.Filled.Delete" @onclick="(() => DeleteLineaPresupuesto(lp))" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" /></td>
+            </tr>
+        }
+    </tbody>
+</MudSimpleTable>
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="CloseDialogConfirmar">Regresar</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="EnviarPresupuesto">Cotizar</MudButton>
+        </DialogActions>
+    </MudDialog>
+
+
+@code{
+    Presupuesto presupuesto=new();
+
+  
+    CategoriaSeleccionable categoria_seleccionada;
+    SubcategoriaSeleccionable subcategoria_seleccionada;
+    LineaPresupuesto linea_presupuesto_actual=new();
+
+    List<Archivo> ArchivosLinea=new();
+    
+    HttpResponseMessage response;
+    
+
+    string campo_nueva_linea_color="";
+    string campo_nueva_linea_talle="";
+    double campo_nueva_linea_cantidad=0;
+
+    string send_status="form";//form, sending, success, error
+    bool visible_dialog_agregar_archivos=false;
+    bool visible_dialog_confirmar_envio=false;
+
+    long total_bytes_used=0;
+    long max_bytes_available=15000000;
+    int percentage_total_bytes_used=0;
+  
+    bool render_button_volver_a_promart=false;
+    string estado_archivos_y_notas_linea_actual="";
+    
+
+    List<SelectorPersonalizadoSubcategoria> selectores_personalizados_subcategoria=new();
+    List<LineaTalleYColor> talles_y_colores=new();
+
+    protected override async Task OnInitializedAsync(){
+        await Task.Delay(500);
+        StateHasChanged();
+        /*
+        await Task.Delay(6000);
+        send_status="error";
+        StateHasChanged();
+        await Task.Delay(8000);
+        render_button_volver_a_promart=true;
+        StateHasChanged();*/
+    }
+
+    private void UpdatedSelectedCategoria(){
+        subcategoria_seleccionada=null;
+        selectores_personalizados_subcategoria=new();
+        StateHasChanged();
+        
+        
+    }
+    private void UpdatedSelectedSubcategoria(){
+        SubcategoriaSeleccionable temp=subcategoria_seleccionada;
+        subcategoria_seleccionada=null;
+        StateHasChanged();
+        subcategoria_seleccionada=temp;
+        selectores_personalizados_subcategoria=CategoriaData.getSelectoresAdicionalesSubcategoria(subcategoria_seleccionada.ID);
+        talles_y_colores=new();
+        StateHasChanged();
+    }
+    private void UpdatedSelectedSelectorPersonalizado(){
+        foreach(SelectorPersonalizadoSubcategoria s in selectores_personalizados_subcategoria){
+            if(s.ElementoSeleccionado is not null){
+                if(s.ElementoSeleccionado.Detalle is not null){
+                    s.Detalle=s.ElementoSeleccionado.Detalle;
+                }
+            }
+        }
+        StateHasChanged();
+    }
+    private void AddLineaColorTalle(){
+        bool lineacolor_talle_filled=false;
+        if(subcategoria_seleccionada.SoportaLineaTalle && subcategoria_seleccionada.SoportaLineaColor){
+            if(campo_nueva_linea_cantidad>0 && campo_nueva_linea_color.Length>0 && campo_nueva_linea_talle.Length>0){
+                lineacolor_talle_filled=true;
+            }
+
+        }
+        if(subcategoria_seleccionada.SoportaLineaTalle && subcategoria_seleccionada.SoportaLineaColor==false){
+            if(campo_nueva_linea_cantidad>0 && campo_nueva_linea_talle.Length>0){
+                lineacolor_talle_filled=true;
+            }
+        }
+        if(subcategoria_seleccionada.SoportaLineaTalle==false && subcategoria_seleccionada.SoportaLineaColor){
+            if(campo_nueva_linea_cantidad>0 && campo_nueva_linea_color.Length>0){
+                lineacolor_talle_filled=true;
+            }
+        }
+        if(lineacolor_talle_filled){
+            LineaTalleYColor linea_nueva=new();
+            linea_nueva.Cantidad=campo_nueva_linea_cantidad;
+            linea_nueva.Talle=campo_nueva_linea_talle;
+            linea_nueva.Color=campo_nueva_linea_color;
+            Guid uuid = Guid.NewGuid();
+            linea_nueva.UUID=uuid.ToString();
+            talles_y_colores.Add(linea_nueva);
+            campo_nueva_linea_cantidad=0;
+           
+            campo_nueva_linea_talle="";
+            StateHasChanged();
+        }
+    }
+    private void DeleteLineaTalleColor(LineaTalleYColor ltc){
+        talles_y_colores.Remove(ltc);
+        StateHasChanged();
+    }
+
+    private void AgregarLineaPresupuesto(){
+        //Verficar que todos los campos esten completos
+        bool listo_para_agregar_linea=true;
+        if(String.IsNullOrWhiteSpace(linea_presupuesto_actual.NombreProducto)){
+            listo_para_agregar_linea=false;
+        }
+        foreach(SelectorPersonalizadoSubcategoria s in selectores_personalizados_subcategoria){
+            if(s.ElementoSeleccionado is null){
+                listo_para_agregar_linea=false;
+            }
+        }
+        //Instanciar linea de presupuesto
+        if(listo_para_agregar_linea){
+        if(talles_y_colores.Count==0){
+            linea_presupuesto_actual.CantidadSinColorNiTalle=campo_nueva_linea_cantidad;
+        }else{
+        linea_presupuesto_actual.LineasTalleYColor=talles_y_colores;
+        }
+        linea_presupuesto_actual.IDCategoria=categoria_seleccionada.ID;
+        linea_presupuesto_actual.IDSubcategoria=subcategoria_seleccionada.ID;
+        linea_presupuesto_actual.UUID=Guid.NewGuid().ToString();
+        linea_presupuesto_actual.Archivos=ArchivosLinea;
+        ArchivosLinea=new();
+        //Agregar linea de presupuesto
+        presupuesto.LineasPresupuesto.Add(linea_presupuesto_actual);
+        //Limpiar campos
+        linea_presupuesto_actual=new();
+        subcategoria_seleccionada=null;
+        categoria_seleccionada=null;
+        talles_y_colores=new();
+        selectores_personalizados_subcategoria=new();
+        estado_archivos_y_notas_linea_actual="";
+        //Mostrar una confirmacion
+        Snackbar.Add("Producto agregado exitosamente", Severity.Success);
+        StateHasChanged();
+        }
+    }
+
+    private async void DeleteLineaPresupuesto(LineaPresupuesto lp){
+        presupuesto.LineasPresupuesto.Remove(lp);
+        await RefreshUsedStorage();
+        Snackbar.Add("Producto eliminado", Severity.Info);
+        StateHasChanged();
+    }
+    private async Task EnviarPresupuesto(){
+        presupuesto.UUID=Guid.NewGuid().ToString();
+        Console.WriteLine(presupuesto.getTextQuote());
+        visible_dialog_confirmar_envio=false;
+
+        await Execute();
+    }
+
+    private void CloseDialogAddFiles(){
+        visible_dialog_agregar_archivos=false;
+        Snackbar.Add("Se han guardado los cambios", Severity.Success);
+        RefreshEstadoArchivosYNotasLineaActual();
+    }
+    private void OpenDialogAddFiles(){
+        visible_dialog_agregar_archivos=true;
+    }
+    private async void QuitarArchivoLineaActual(Archivo archivo){
+        ArchivosLinea.Remove(archivo);
+        StateHasChanged();
+        await RefreshUsedStorage();
+        RefreshEstadoArchivosYNotasLineaActual();
+    }
+    private async void AddArchivoLinea(IBrowserFile file){
+        var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 15 * 1024 * 1024)); // 10 MB max size
+           
+            fileContent.Headers.ContentDisposition = new System.Net.Http.Headers.ContentDispositionHeaderValue("form-data")
+             {
+                Name = "files",
+                FileName = file.Name
+            };
+             fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+        Archivo archivo=new();
+        archivo.FileContent=fileContent;
+        archivo.BrowserFile=file;
+        archivo.UUID=Guid.NewGuid().ToString();
+        archivo.Nombre=file.Name;
+        ArchivosLinea.Add(archivo);
+        await RefreshUsedStorage();
+        RefreshEstadoArchivosYNotasLineaActual();
+    }
+    private async Task RefreshUsedStorage(){
+        //para cada archivo en linea actual
+        total_bytes_used=0;
+        foreach(Archivo a in ArchivosLinea){
+            MemoryStream memoryStream = new MemoryStream();
+            await a.FileContent.CopyToAsync(memoryStream);
+            total_bytes_used=total_bytes_used+memoryStream.Length;
+
+             // Set the position of the original stream to the beginning
+            memoryStream.Position = 0; // Reset position before using in StreamContent
+            StreamContent newStreamContent = new StreamContent(memoryStream);
+            a.FileContent=newStreamContent;
+            Console.WriteLine("Bytes used till now= "+total_bytes_used.ToString());
+       
+
+        }
+        foreach(LineaPresupuesto lp in presupuesto.LineasPresupuesto){
+        foreach(Archivo a in lp.Archivos){
+            MemoryStream memoryStream = new MemoryStream();
+            await a.FileContent.CopyToAsync(memoryStream);
+            total_bytes_used=total_bytes_used+memoryStream.Length;
+
+             // Set the position of the original stream to the beginning
+            memoryStream.Position = 0; // Reset position before using in StreamContent
+            StreamContent newStreamContent = new StreamContent(memoryStream);
+            a.FileContent=newStreamContent;
+ 
+            Console.WriteLine("Bytes used till now= "+total_bytes_used.ToString());
+       
+
+        }}
+        Console.WriteLine("TOTAL="+total_bytes_used.ToString());
+        percentage_total_bytes_used=(int)((total_bytes_used*100.0)/max_bytes_available);
+        Console.WriteLine("PERC="+percentage_total_bytes_used.ToString()+" - " + ((total_bytes_used*100.0)/max_bytes_available).ToString());
+        StateHasChanged();
+    }
+    private void RefreshEstadoArchivosYNotasLineaActual(){
+        int nro_archivos=ArchivosLinea.Count;
+        if(nro_archivos>0&&string.IsNullOrWhiteSpace(linea_presupuesto_actual.NotaEspecificacion)==false){
+            estado_archivos_y_notas_linea_actual=nro_archivos.ToString()+" archivos, 1 nota agregada";
+        }
+        if(nro_archivos>0&&string.IsNullOrWhiteSpace(linea_presupuesto_actual.NotaEspecificacion)==true){
+            estado_archivos_y_notas_linea_actual=nro_archivos.ToString()+" archivos cargados";
+        }
+        if(nro_archivos==0&&string.IsNullOrWhiteSpace(linea_presupuesto_actual.NotaEspecificacion)==false){
+            estado_archivos_y_notas_linea_actual="1 nota agregada";
+        }
+         if(nro_archivos==0&&string.IsNullOrWhiteSpace(linea_presupuesto_actual.NotaEspecificacion)==true){
+            estado_archivos_y_notas_linea_actual="";
+        }
+        StateHasChanged();
+    }
+
+    private bool ValidateAll(){
+       bool isvalid=true;
+       if(string.IsNullOrWhiteSpace(presupuesto.NombreEmpresa)||string.IsNullOrWhiteSpace(presupuesto.NombreContacto)||string.IsNullOrWhiteSpace(presupuesto.ApellidoContacto)||string.IsNullOrWhiteSpace(presupuesto.Telefono)||string.IsNullOrWhiteSpace(presupuesto.Email)||string.IsNullOrWhiteSpace(presupuesto.DireccionEntrega)||string.IsNullOrWhiteSpace(presupuesto.DireccionEntregaLinea2)||string.IsNullOrWhiteSpace(presupuesto.Estado)||string.IsNullOrWhiteSpace(presupuesto.Ciudad)||string.IsNullOrWhiteSpace(presupuesto.CodigoPostal)||string.IsNullOrWhiteSpace(presupuesto.NotasEntrega)){
+        isvalid=false;
+        //notify data missing empresa cliente
+        Snackbar.Add("Datos de empresa incompletos", Severity.Error);
+       }
+       if(presupuesto.LineasPresupuesto.Count<1){
+        isvalid=false;
+        //notify no products
+        Snackbar.Add("No se han agregado productos al presupuesto", Severity.Error);
+       }
+       if(total_bytes_used>max_bytes_available){
+        isvalid=false;
+        Snackbar.Add("Se ha excedido el tamaño maximo de archivos", Severity.Error);
+       }
+
+       return isvalid;
+    }
+    private async Task Execute(){
+        if(ValidateAll()){
+            send_status="sending";
+            StateHasChanged();
+            
+            await Task.Delay(500);
+           
+            try
+            {
+               
+            //var content = new MultipartFormDataContent(boundary);
+            var content=new MultipartFormDataContent();
+            int nro_archivo=1;
+            //only leave one
+            //content.Add(new StringContent("token _Jec73iLKClUfcPFv"), "auth_token");//dev
+            content.Add(new StringContent("token _EPC5wBj7cPEziwjJ"), "auth_token");//prod
+            
+            content.Add(new StringContent(presupuesto.getTextQuote()), "Productos");
+            foreach(LineaPresupuesto lp in presupuesto.LineasPresupuesto){
+                if(lp.Archivos.Count>0){
+                foreach(Archivo arc in lp.Archivos){
+                    //content.Add(arc.FileContent, lp.NombreProducto+"_"+nro_archivo.ToString(), arc.Nombre);
+                    Console.WriteLine("ADD TO CONTENT="+arc.Nombre);
+                    nro_archivo++;
+                    //reset stream
+
+                    MemoryStream memoryStream = new MemoryStream();
+                    await arc.FileContent.CopyToAsync(memoryStream);
+                   
+                    content.Add(new StreamContent(memoryStream), lp.NombreProducto+"_"+nro_archivo.ToString(), arc.Nombre);
+                   
+                    // Set the position of the original stream to the beginning
+                    memoryStream.Position = 0; // Reset position before using in StreamContent
+                    StreamContent newStreamContent = new StreamContent(memoryStream);
+                    
+                    arc.FileContent=newStreamContent;
+                }
+                }
+            }
+
+          
+            
+            
+            
+      
+            //var contentType = $"multipart/form-data; boundary={boundary}";
+
+            //httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Content-Type", contentType);
+            
+            
+            
+            var request = new HttpRequestMessage(HttpMethod.Post, "/api/Sender/upload")
+            {
+                Content = content
+            };
+            //request.SetBrowserRequestCredentials(BrowserRequestCredentials.Omit);
+            //request.SetBrowserRequestMode(BrowserRequestMode.Cors);  
+            //request.Content.Headers.Remove("Content-Type");
+            //request.Content.Headers.Add("Content-Type", contentType);
+            //Console.WriteLine(JsonSerializer.Serialize(request)+JsonSerializer.Serialize(content));
+            response = await httpClient.SendAsync(request);
+                
+                 if(response.IsSuccessStatusCode){
+                    Console.WriteLine("SUCCESS");
+                    send_status="success";
+                    StateHasChanged();
+                    await Task.Delay(6000);
+                    render_button_volver_a_promart=true;
+                    StateHasChanged();
+                
+                 }else{
+                    send_status="error";
+                    StateHasChanged();
+                    await Task.Delay(6000);
+                    render_button_volver_a_promart=true;
+                    StateHasChanged();
+                 }
+                 
+            
+            
+            
+            
+        }
+        catch(Exception e){   
+            
+            send_status="error";
+            StateHasChanged();
+            await Task.Delay(8000);
+            render_button_volver_a_promart=true;
+            StateHasChanged();
+            Console.WriteLine(e.Message);
+        }
+        }
+    }
+
+    private void OpenDialogConfirmar(){
+        if(ValidateAll()){
+        visible_dialog_confirmar_envio=true;
+        StateHasChanged();
+        }
+    }
+    private void CloseDialogConfirmar(){
+        visible_dialog_confirmar_envio=false;
+        StateHasChanged();
+    }
+
+
+    
+
+    //Class definitions
+    public class CategoriaSeleccionable : Categoria
+    {
+        public CategoriaSeleccionable(Categoria c)
+        {
+            Descripcion = c.Descripcion;
+            ID=c.ID;
+        }
+        public override bool Equals(object o)
+        {
+            var other = o as CategoriaSeleccionable;
+            return other?.Descripcion == Descripcion;
+        }
+        public override int GetHashCode() => Descripcion?.GetHashCode() ?? 0;
+        public override string ToString() => Descripcion;
+    }
+    public class SubcategoriaSeleccionable : Subcategoria
+    {
+        public SubcategoriaSeleccionable(Subcategoria s)
+        {
+            Nombre=s.Nombre;
+            ID=s.ID;
+            IDCategoria=s.IDCategoria;
+            SoportaLineaColor=s.SoportaLineaColor;
+            SoportaLineaTalle=s.SoportaLineaTalle;
+        }
+        public override bool Equals(object o)
+        {
+            var other = o as SubcategoriaSeleccionable;
+            return other?.Nombre == Nombre;
+        }
+        public override int GetHashCode() => Nombre?.GetHashCode() ?? 0;
+        public override string ToString() => Nombre;
+    }
+
+    private string TextLenghtEqualizer(string text, int len){
+        if (text.Length == len)
+        {
+            return text;
+        }
+        else if (text.Length > len)
+        {
+            string st= text.Substring(0, len);
+            return st+"..";
+        }
+        else
+        {
+            return text.PadRight(len);
+        }
+    }
+   
+}
+
+    
