@@ -1,15 +1,15 @@
 {
   "mainAssemblyName": "Form.UI",
   "resources": {
-    "hash": "sha256-Kk3O/2CFQGrF9H1Jrh/vajXaUEGrKHpEUN20xzTLMuA=",
+    "hash": "sha256-t7S3KP6x1yzyePn29RQIC7DJ8Lhgl5NlVKnFYIpRDpo=",
     "jsModuleNative": {
-      "dotnet.native.8.0.11.amu8a9zp1w.js": "sha256-VdKq87/z5NIxZKmuM+fv38XF+RcEb/bg3jVBwQSfwP4="
+      "dotnet.native.8.0.11.ythkwl77hz.js": "sha256-91SQlu+ykBdK/omWPKcQr07lvNbXSs6YrjiJyI8FpjY="
     },
     "jsModuleRuntime": {
-      "dotnet.runtime.8.0.11.60jr81dnq7.js": "sha256-nam8JTYKjhMKOTg6+FlihYP6JpWPGe3jjM9fiUFWzhY="
+      "dotnet.runtime.8.0.11.v4d3uixg8h.js": "sha256-nam8JTYKjhMKOTg6+FlihYP6JpWPGe3jjM9fiUFWzhY="
     },
     "wasmNative": {
-      "dotnet.native.wasm": "sha256-1NJsNYy4gznvjVwzcG5w3Cl50enK1KB/7cKBMY+6jz4="
+      "dotnet.native.wasm": "sha256-w7kuKiiKzfvYIgGDkDbfNTyURzsabMdY6W8m+qhaow8="
     },
     "assembly": {
       "BlazorAnimate.wasm": "sha256-rwFvQE7EmQQRmAK0NmiigoQvxYT6a6KaBWPYzSV4+Jk=",
